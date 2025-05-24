@@ -1,0 +1,26 @@
+package com.samar.users.restController;
+
+import java.util.List;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.web.bind.annotation.CrossOrigin;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestMethod;
+import org.springframework.web.bind.annotation.RestController;
+
+import com.samar.users.entities.User;
+import com.same.users.service.UserService;
+
+@RestController
+@CrossOrigin(origins="*")
+public class UserRestController {
+	@Autowired
+	UserService userServ;
+	
+	//@RequestMapping(path="all",method=RequestMethod.GET)
+	@GetMapping("/all")
+	public List<User> getAllUsers(){
+		return userServ.findAllUsers();
+	}
+}

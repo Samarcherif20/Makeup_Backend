@@ -1,0 +1,64 @@
+package com.example.makeup.security;
+import java.util.Collections;
+
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
+import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.CorsConfigurationSource;
+
+import jakarta.servlet.http.HttpServletRequest;
+
+@Configuration
+@EnableWebSecurity
+@EnableMethodSecurity(prePostEnabled = true)
+public class SecurityConfig {
+
+    @Bean
+    public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
+        http.sessionManagement(session -> 
+                session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+            .csrf(csrf -> csrf.disable())
+            .cors(cors -> cors.configurationSource(new CorsConfigurationSource() {
+                @Override
+                public CorsConfiguration getCorsConfiguration(HttpServletRequest request) {
+                    CorsConfiguration cors = new CorsConfiguration();
+                    cors.setAllowedOrigins(Collections.singletonList("http://localhost:4200"));
+                    cors.setAllowedMethods(Collections.singletonList("*"));
+                    cors.setAllowedHeaders(Collections.singletonList("*"));
+                    cors.setExposedHeaders(Collections.singletonList("Authorization"));
+                    return cors;
+                }
+            }))
+            .authorizeHttpRequests(requests -> requests
+                // Public APIs (if any)
+                .requestMatchers("/api/auth/**").permitAll()  // Allow login/register without auth
+
+                // Makeup APIs with role-based access
+                .requestMatchers("/api/makeup/all/**").hasAnyAuthority("ADMIN", "USER")  // View all makeup
+                .requestMatchers(HttpMethod.GET, "/api/makeup/getbyid/**").hasAnyAuthority("ADMIN", "USER")  // View by ID
+                .requestMatchers(HttpMethod.POST, "/api/makeup/add/**").hasAuthority("ADMIN")  // Add new makeup (ADMIN only)
+                .requestMatchers(HttpMethod.PUT, "/api/makeup/update/**").hasAuthority("ADMIN")  // Update (ADMIN only)
+                .requestMatchers(HttpMethod.DELETE, "/api/makeup/delete/**").hasAuthority("ADMIN")  // Delete (ADMIN only)
+                
+                // Any other request needs authentication
+                .anyRequest().authenticated()
+            )
+            .addFilterBefore(new JWTAuthorizationFilter(), 
+                UsernamePasswordAuthenticationFilter.class);
+
+        return http.build();
+    }
+
+    @Bean
+    public BCryptPasswordEncoder passwordEncoder() {
+        return new BCryptPasswordEncoder();
+    }
+}
